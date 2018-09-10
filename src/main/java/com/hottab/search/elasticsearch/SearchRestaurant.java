@@ -5,10 +5,8 @@
  */
 package com.hottab.search.elasticsearch;
 
-import com.hottab.search.restaurant.request.OrderByKey;
-import com.hottab.search.restaurant.request.RequestByKey;
 import com.hottab.search.restaurant.request.SearchRestaurantRequest;
-import java.util.List;
+import com.hottab.search.restaurant.utils.ReadParam;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
@@ -19,7 +17,6 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.common.unit.DistanceUnit;
 import org.elasticsearch.index.query.QueryBuilder;
 import static org.elasticsearch.index.query.QueryBuilders.geoDistanceQuery;
-import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
 import org.json.simple.JSONArray;
@@ -32,76 +29,21 @@ import org.json.simple.parser.JSONParser;
  */
 public class SearchRestaurant {
 
-    private final String host = "localhost";
-    private final String cluster = "my-application";
-    private final int port = 9300;
-    private final String index = "index_test";
-    private final String type = "type_test";
-    private final String field1 = "field";
-    private final String field2 = "name";
+    private static String host = "localhost";
+    private static String cluster = "my-application";
+    private static int port = 9300;
+    private static String index = "index_test";
+    private static String type = "type_test";
 
-    public String searchProduct(List<RequestByKey> requesetByKey, boolean isLikeSearch) {
-
-        Client client = ESManager.getClient(host, port, cluster);
-
-        SearchRequestBuilder searchRequest = client.prepareSearch(index).setTypes(type);
-
-        for (RequestByKey keyWord : requesetByKey) {
-            if (keyWord != null && keyWord.getKey() != null && keyWord.getValue() != null) {
-                if (isLikeSearch) {
-                    searchRequest.setQuery(QueryBuilders.boolQuery()
-                            .should(QueryBuilders.wildcardQuery(keyWord.getKey(), "*" + keyWord.getValue() + "*")));
-                } else {
-                    searchRequest.setQuery(QueryBuilders.boolQuery()
-                            .should(QueryBuilders.wildcardQuery(keyWord.getKey(), keyWord.getValue())));
-                }
-            }
-        }
-
-        SearchResponse searchResponse = searchRequest.execute().actionGet();
-        return searchResponse.toString();
+    static {
+        host = ReadParam.getInstance().getString("ES_HOSTS");
+        cluster = ReadParam.getInstance().getString("ES_CLUSTER_NAME");
+        port = ReadParam.getInstance().getInt("ES_PORTS");
+        index = ReadParam.getInstance().getString("ES_INDEX");
+        type = ReadParam.getInstance().getString("ES_TYPE");
     }
 
-    public String searchProduct(List<RequestByKey> requesetByKey, boolean isLikeSearch, List<OrderByKey> lstOrder, boolean orderByLocation) {
-
-        Client client = ESManager.getClient(host, port, cluster);
-
-        SearchRequestBuilder searchRequest = client.prepareSearch(index).setTypes(type);
-
-        if (requesetByKey != null) {
-            for (RequestByKey keyWord : requesetByKey) {
-                if (keyWord != null && keyWord.getKey() != null && keyWord.getValue() != null) {
-                    if (isLikeSearch) {
-                        searchRequest.setQuery(QueryBuilders.boolQuery()
-                                .should(QueryBuilders.wildcardQuery(keyWord.getKey(), "*" + keyWord.getValue() + "*")));
-                    } else {
-                        searchRequest.setQuery(QueryBuilders.boolQuery()
-                                .should(QueryBuilders.wildcardQuery(keyWord.getKey(), keyWord.getValue())));
-                    }
-                }
-            }
-        }
-
-        if (lstOrder != null && lstOrder.size() > 0) {
-            for (OrderByKey order : lstOrder) {
-                if (order.getOrderType() == 1) {
-                    searchRequest.addSort(order.getColumn(), SortOrder.ASC);
-                } else {
-                    searchRequest.addSort(order.getColumn(), SortOrder.DESC);
-                }
-            }
-        }
-
-        if (orderByLocation) {
-            GeoPoint geoPoint = new GeoPoint(21.0224418, 105.8255965);
-            searchRequest.addSort(SortBuilders.geoDistanceSort("location", geoPoint).order(SortOrder.ASC).unit(DistanceUnit.KILOMETERS));
-        }
-
-        SearchResponse searchResponse = searchRequest.execute().actionGet();
-        return searchResponse.toString();
-    }
-
-    public String searchRestaurant(SearchRestaurantRequest searchRestaurantRequest, boolean orderByDistance) throws Exception{
+    public String searchRestaurant(SearchRestaurantRequest searchRestaurantRequest, boolean orderByDistance) throws Exception {
 
         Client client = ESManager.getClient(host, port, cluster);
 
@@ -177,11 +119,11 @@ public class SearchRestaurant {
         SearchResponse searchResponse = searchRequest.execute().actionGet();
         JSONParser parser = new JSONParser();
         JSONObject jObject = (JSONObject) parser.parse(searchResponse.toString());
-        JSONObject hits =  ((JSONObject) jObject.get("hits"));
+        JSONObject hits = ((JSONObject) jObject.get("hits"));
         JSONArray arrHit = (JSONArray) hits.get("hits");
         return ((JSONObject) arrHit.get(0)).get("_source").toString();
 //        return data.toString();
-        
+
     }
 
     public String searchProduct(String[] lstKeyWord) {
@@ -193,7 +135,7 @@ public class SearchRestaurant {
         for (String keyWord : lstKeyWord) {
             if (keyWord != null && keyWord.trim().length() > 0) {
                 searchRequest.setQuery(QueryBuilders.boolQuery()
-                        .should(QueryBuilders.wildcardQuery(field1, "*" + keyWord + "*")));
+                        .should(QueryBuilders.wildcardQuery("field", "*" + keyWord + "*")));
             }
         }
         SearchResponse searchResponse = searchRequest.execute().actionGet();

@@ -4,7 +4,7 @@
  * and open the template in the editor.
  */
 
-package com.hottab.search.jedis;
+package com.hottab.search.restaurant.utils;
 
 /**
  *

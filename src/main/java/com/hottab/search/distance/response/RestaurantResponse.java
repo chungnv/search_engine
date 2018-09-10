@@ -10,7 +10,7 @@ package com.hottab.search.distance.response;
  * @author Chung
  */
 public class RestaurantResponse {
-    
+
     private String code;
     private double lat;
     private double lon;

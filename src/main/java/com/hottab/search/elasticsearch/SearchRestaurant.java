@@ -29,23 +29,23 @@ import org.json.simple.parser.JSONParser;
  */
 public class SearchRestaurant {
 
-    private static String host = "localhost";
+    private static String hosts = "localhost";
     private static String cluster = "my-application";
-    private static int port = 9300;
+    //private static String ports = "9300";
     private static String index = "index_test";
     private static String type = "type_test";
 
     static {
-        host = ReadParam.getInstance().getString("ES_HOSTS");
+        hosts = ReadParam.getInstance().getString("ES_HOSTS");
         cluster = ReadParam.getInstance().getString("ES_CLUSTER_NAME");
-        port = ReadParam.getInstance().getInt("ES_PORTS");
+        //ports = ReadParam.getInstance().getString("ES_PORTS");
         index = ReadParam.getInstance().getString("ES_INDEX");
         type = ReadParam.getInstance().getString("ES_TYPE");
     }
 
     public String searchRestaurant(SearchRestaurantRequest searchRestaurantRequest, boolean orderByDistance) throws Exception {
 
-        Client client = ESManager.getClient(host, port, cluster);
+        Client client = ESManager.getClient(hosts, cluster);
 
         SearchRequestBuilder searchRequest = client.prepareSearch(index).setTypes(type);
 
@@ -128,7 +128,7 @@ public class SearchRestaurant {
 
     public String searchProduct(String[] lstKeyWord) {
 
-        Client client = ESManager.getClient(host, port, cluster);
+        Client client = ESManager.getClient(hosts, cluster);
 
         SearchRequestBuilder searchRequest = client.prepareSearch(index).setTypes(type);
 
@@ -144,7 +144,7 @@ public class SearchRestaurant {
 
     public String geoSearch() {
 
-        Client client = ESManager.getClient(host, port, cluster);
+        Client client = ESManager.getClient(hosts, cluster);
 
         QueryBuilder distanceQuery = geoDistanceQuery("location")
                 .point(21.0224418, 105.8255965)
@@ -165,7 +165,7 @@ public class SearchRestaurant {
 
     public String insertData(String json) {
 
-        Client client = ESManager.getClient(host, port, cluster);
+        Client client = ESManager.getClient(hosts, cluster);
 
         IndexResponse response = client.prepareIndex(index, type)
                 .setSource(json, XContentType.JSON)

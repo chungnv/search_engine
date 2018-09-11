@@ -29,6 +29,7 @@ public class SearchRestaurantRequest {
     private int sort;
     private double lat;
     private double lon;
+    private double radius;
 
     public String getSecret_key() {
         return secret_key;
@@ -172,5 +173,13 @@ public class SearchRestaurantRequest {
 
     public void setLon(double lon) {
         this.lon = lon;
+    }
+
+    public double getRadius() {
+        return radius;
+    }
+
+    public void setRadius(double radius) {
+        this.radius = radius;
     }
 }

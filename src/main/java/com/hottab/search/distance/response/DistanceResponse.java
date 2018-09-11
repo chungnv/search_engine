@@ -5,7 +5,7 @@
  */
 package com.hottab.search.distance.response;
 
-import java.util.List;
+import org.json.simple.JSONArray;
 
 /**
  *
@@ -16,7 +16,7 @@ public class DistanceResponse {
     private MessageResponse message;
     private Boolean error;
 //    private List<RestaurantResponse> data;
-    private String data;
+    private JSONArray data;
 
     public MessageResponse getMessage() {
         return message;
@@ -34,11 +34,11 @@ public class DistanceResponse {
         this.error = error;
     }
     
-    public String getData() {
+    public JSONArray getData() {
         return data;
     }
 
-    public void setData(String data) {
+    public void setData(JSONArray data) {
         this.data = data;
     }
     

@@ -6,15 +6,19 @@
 package com.hottab.search.elasticsearch;
 
 import com.hottab.search.restaurant.request.SearchRestaurantRequest;
+import com.hottab.search.restaurant.utils.Constant;
 import com.hottab.search.restaurant.utils.ReadParam;
+import org.apache.log4j.Logger;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.common.geo.GeoDistance;
 import org.elasticsearch.common.geo.GeoPoint;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.common.unit.DistanceUnit;
+import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilder;
 import static org.elasticsearch.index.query.QueryBuilders.geoDistanceQuery;
 import org.elasticsearch.search.sort.SortBuilders;
@@ -35,6 +39,8 @@ public class SearchRestaurant {
     private static String index = "index_test";
     private static String type = "type_test";
 
+    private Logger logger = Logger.getLogger(SearchRestaurant.class);
+
     static {
         hosts = ReadParam.getInstance().getString("ES_HOSTS");
         cluster = ReadParam.getInstance().getString("ES_CLUSTER_NAME");
@@ -43,7 +49,7 @@ public class SearchRestaurant {
         type = ReadParam.getInstance().getString("ES_TYPE");
     }
 
-    public String searchRestaurant(SearchRestaurantRequest searchRestaurantRequest, boolean orderByDistance) throws Exception {
+    public JSONArray searchRestaurant(SearchRestaurantRequest searchRestaurantRequest, boolean orderByDistance) throws Exception {
 
         Client client = ESManager.getClient(hosts, cluster);
 
@@ -51,21 +57,27 @@ public class SearchRestaurant {
 
         boolean hasCondition = false;
         //order method
+
+        BoolQueryBuilder boolQueries = QueryBuilders.boolQuery();
+
         if (searchRestaurantRequest.getOrdering_method() != null) {
             if (searchRestaurantRequest.getOrdering_method().equals("2")) { //takeaway
-                searchRequest.setQuery(QueryBuilders.boolQuery()
-                        .must(QueryBuilders.matchQuery("online_order_setting.do_takeaway", "1")));
+//                searchRequest.setQuery(QueryBuilders.boolQuery()
+//                        .must(QueryBuilders.matchQuery("online_order_setting.do_takeaway", "1")));
+                boolQueries.must(QueryBuilders.matchQuery("online_order_setting.do_takeaway", "1"));
             }
             if (searchRestaurantRequest.getOrdering_method().equals("3")) { //delivery
-                searchRequest.setQuery(QueryBuilders.boolQuery()
-                        .must(QueryBuilders.matchQuery("online_order_setting.do_delivery", "1")));
+//                searchRequest.setQuery(QueryBuilders.boolQuery()
+//                        .must(QueryBuilders.matchQuery("online_order_setting.do_delivery", "1")));
+                boolQueries.must(QueryBuilders.matchQuery("online_order_setting.do_delivery", "1"));
             }
         }
 
         //delivery_fee
         if (searchRestaurantRequest.getDelivery_fee() != null) {
-            searchRequest.setQuery(QueryBuilders.boolQuery()
-                    .must(QueryBuilders.matchQuery("delivery_fee", searchRestaurantRequest.getDelivery_fee())));
+//            searchRequest.setQuery(QueryBuilders.boolQuery()
+//                    .must(QueryBuilders.matchQuery("delivery_fee", searchRestaurantRequest.getDelivery_fee())));
+            boolQueries.must(QueryBuilders.matchQuery("delivery_fee", searchRestaurantRequest.getDelivery_fee()));
         }
 
         //minimum_order
@@ -75,8 +87,9 @@ public class SearchRestaurant {
             String arrTag[] = searchRestaurantRequest.getTags().split(",");
             for (String uuid : arrTag) {
                 if (uuid != null && uuid.trim().length() > 0) {
-                    searchRequest.setQuery(QueryBuilders.boolQuery()
-                            .must(QueryBuilders.matchQuery("tags.tag_uuid", uuid.trim())));
+//                    searchRequest.setQuery(QueryBuilders.boolQuery()
+//                            .must(QueryBuilders.matchQuery("tags.tag_uuid", uuid.trim())));
+                    boolQueries.must(QueryBuilders.matchQuery("tags.tag_uuid", uuid.trim()));
                 }
             }
         }
@@ -86,8 +99,9 @@ public class SearchRestaurant {
             String citys[] = searchRestaurantRequest.getCity().split(",");
             for (String cityUuid : citys) {
                 if (cityUuid != null && cityUuid.trim().length() > 0) {
-                    searchRequest.setQuery(QueryBuilders.boolQuery()
-                            .must(QueryBuilders.matchQuery("city_uuid", cityUuid.trim())));
+//                    searchRequest.setQuery(QueryBuilders.boolQuery()
+//                            .must(QueryBuilders.matchQuery("city_uuid", cityUuid.trim())));
+                    boolQueries.must(QueryBuilders.matchQuery("city_uuid", cityUuid.trim()));
                 }
             }
         }
@@ -97,32 +111,60 @@ public class SearchRestaurant {
             String districts[] = searchRestaurantRequest.getDistrict().split(",");
             for (String districtUuid : districts) {
                 if (districtUuid != null && districtUuid.trim().length() > 0) {
-                    searchRequest.setQuery(QueryBuilders.boolQuery()
-                            .must(QueryBuilders.matchQuery("district_uuid", districtUuid.trim())));
+//                    searchRequest.setQuery(QueryBuilders.boolQuery()
+//                            .must(QueryBuilders.matchQuery("district_uuid", districtUuid.trim())));
+                    boolQueries.must(QueryBuilders.matchQuery("district_uuid", districtUuid.trim()));
                 }
             }
         }
 
         //lang
         if (searchRestaurantRequest.getLang() != null) {
-            searchRequest.setQuery(QueryBuilders.boolQuery()
-                    .must(QueryBuilders.matchQuery("translations.lang_iso_code", searchRestaurantRequest.getLang())));
+//            searchRequest.setQuery(QueryBuilders.boolQuery()
+//                    .must(QueryBuilders.matchQuery("translations.lang_iso_code", searchRestaurantRequest.getLang())));
+            boolQueries.must(QueryBuilders.matchQuery("translations.lang_iso_code", searchRestaurantRequest.getLang()));
+        }
+
+        //filter by distance
+        if (searchRestaurantRequest.getRadius() > 0 && searchRestaurantRequest.getLat() > 0
+                && searchRestaurantRequest.getLon() > 0) {
+            QueryBuilder distanceQuery = geoDistanceQuery("location")
+                    .point(searchRestaurantRequest.getLat(), searchRestaurantRequest.getLon())
+                    .distance(searchRestaurantRequest.getRadius(), DistanceUnit.KILOMETERS);
+
+//            searchRequest.setQuery(QueryBuilders.boolQuery()
+//                    .must(distanceQuery));
+            boolQueries.must(distanceQuery);
         }
 
         //business not found
         //cuisines not found
-        if (orderByDistance) {
+        searchRequest.setQuery(boolQueries);
+        if (orderByDistance && searchRestaurantRequest.getLat() > 0
+                && searchRestaurantRequest.getLon() > 0) {
             GeoPoint geoPoint = new GeoPoint(searchRestaurantRequest.getLat(), searchRestaurantRequest.getLon());
-            searchRequest.addSort(SortBuilders.geoDistanceSort("location", geoPoint).order(SortOrder.ASC).unit(DistanceUnit.KILOMETERS));
+            searchRequest.addSort(SortBuilders.geoDistanceSort("location", geoPoint)
+                    .order(SortOrder.ASC).unit(DistanceUnit.KILOMETERS));
         }
 
+        searchRequest.setSize(Constant.PAGNATION);
+        searchRequest.setFrom(searchRestaurantRequest.getPagination() * Constant.PAGNATION);
+
         SearchResponse searchResponse = searchRequest.execute().actionGet();
+
         JSONParser parser = new JSONParser();
         JSONObject jObject = (JSONObject) parser.parse(searchResponse.toString());
+
+        logger.info("Search Query: " + searchRequest.toString() + ". Total time: " + jObject.get("took"));
+
         JSONObject hits = ((JSONObject) jObject.get("hits"));
         JSONArray arrHit = (JSONArray) hits.get("hits");
-        return ((JSONObject) arrHit.get(0)).get("_source").toString();
-//        return data.toString();
+        JSONArray jsonResponse = new JSONArray();
+        for (Object hit : arrHit) {
+            JSONObject hitObject = (JSONObject) hit;
+            jsonResponse.add(hitObject.get("_source"));
+        }
+        return jsonResponse;
 
     }
 
@@ -156,7 +198,7 @@ public class SearchRestaurant {
 
         GeoPoint geoPoint = new GeoPoint(21.0224418, 105.8255965);
 
-        searchRequest.addSort(SortBuilders.geoDistanceSort("location", geoPoint).order(SortOrder.DESC).unit(DistanceUnit.KILOMETERS));
+        searchRequest.addSort(SortBuilders.geoDistanceSort("location", geoPoint).order(SortOrder.DESC).unit(DistanceUnit.KILOMETERS).geoDistance(GeoDistance.PLANE));
 
         SearchResponse searchResponse = searchRequest.execute().actionGet();
         return searchResponse.toString();
@@ -202,7 +244,7 @@ public class SearchRestaurant {
         searchRestaurantRequest.setLat(21.0224418);
         searchRestaurantRequest.setLon(105.8255965);
 
-        String response = searchProduct.searchRestaurant(searchRestaurantRequest, true);
+        String response = searchProduct.searchRestaurant(searchRestaurantRequest, true).toJSONString();
 //        String response = searchProduct.geoSearch();
 
         JSONParser parser = new JSONParser();

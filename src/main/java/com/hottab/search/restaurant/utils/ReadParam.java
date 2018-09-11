@@ -33,7 +33,7 @@ public class ReadParam {
         if (properties == null) {
             try {
                 properties = new Properties();
-                properties.load(new FileInputStream("../config.properties"));
+                properties.load(new FileInputStream("../conf/config.properties"));
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
@@ -43,7 +43,7 @@ public class ReadParam {
     public String getString(String key) {
         return properties.getProperty(key);
     }
-    
+
     public int getInt(String key) {
         return Integer.parseInt(properties.getProperty(key));
     }

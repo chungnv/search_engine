@@ -16,4 +16,9 @@ public class Constant {
     public static final String ERROR_CODE_SUCESS_CODE = "0";
     public static final String ERROR_CODE_SUCESS_MSG = "Success";
     
+    public static final String ERROR_CODE_ECRETE_EY_IE = "1";
+    public static final String ERROR_CODE_ECRETE_EY_IE_MSG = "Invi crete ey";
+    
+    public static final int PAGNATION = 10;
+    
 }
